@@ -13,6 +13,61 @@ if not sys.platform == 'win32':
 #def copy(data):
 #    clipboard.copy(str(data))
 
+
+try:
+    from IPython import get_ipython
+    if get_ipython() is not None:
+        print("Running in IPython environment")
+        
+    else:
+        print("Running in standard Python interpreter")
+        
+        def ls(path=None):
+            if path == None:
+                path = os.getcwd()
+            return os.listdir(path)
+        
+        def cd(path):
+            return os.chdir(path)
+        
+        def mkdir(path):
+            return os.makedirs(path)
+        
+        def cls():
+            if sys.platform == 'win32':
+                os.system('cls')
+            else:
+                os.system('clear')
+        
+        def pwd():
+            return os.getcwd()
+        
+        
+except ImportError:
+    print("Running in standard Python interpreter")
+    
+    def ls(path=None):
+        if path == None:
+            path = os.getcwd()
+        return os.listdir(path)
+    
+    def cd(path):
+        return os.chdir(path)
+    
+    def mkdir(path):
+        return os.makedirs(path)
+    
+    def cls():
+        if sys.platform == 'win32':
+            os.system('cls')
+        else:
+            os.system('clear')
+    
+    def pwd():
+        return os.getcwd()
+    
+    
+
 def get_width():
     width = 111
     try:
@@ -45,28 +100,9 @@ def setdebug(debug=None, host=None, traceback_debugger_server=None, reset=False)
 def set_debug(debug=None, host=None, traceback_debugger_server=None, reset=False):
     setdebug(debug, host, traceback_debugger_server, reset)
 
-def ls(path=None):
-    if path == None:
-        path = os.getcwd()
-    return os.listdir(path)
-
-def cd(path):
-    return os.chdir(path)
-
-def mkdir(path):
-    return os.makedirs(path)
 
 def kill(pid):
     return os.kill(pid, pid)
-
-def cls():
-    if sys.platform == 'win32':
-        os.system('cls')
-    else:
-        os.system('clear')
-
-def pwd():
-    return os.getcwd()
 
 def expand(env=None):
     if env:
