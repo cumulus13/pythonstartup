@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+#author: Hadi Cahyadi
+#email: cumulus13@gmail.com
+#license: MIT
+
 from __future__ import print_function
 import rlcompleter
 import readline
@@ -179,7 +184,8 @@ def read_file(file_path: Union[str, Path]) -> Optional[str]:
                 print()  # Add spacing
             except Exception as e:
                 print(f"Warning: Could not analyze file structure: {e}")
-        
+        else:
+            warning
         # Display source code with syntax highlighting
         console.print(f"[bold #00FF88]📄 Complete Source Code:[/] [bold #55FFFF]{path}[/]\n")
         syntax = Syntax(
@@ -307,9 +313,9 @@ def setup_shell_functions():
         return cwd
     
     # Add functions to builtins so they're available globally
-    builtins.ls = ls
+    # builtins.ls = ls
     builtins.cd = cd
-    builtins.mkdir = mkdir
+    # builtins.mkdir = mkdir
     builtins.cls = cls
     builtins.pwd = pwd
 
@@ -373,7 +379,7 @@ def setup_ipython_magic():
                 return self.src(line)
             
             @line_magic
-            def ls(self, line):
+            def lls(self, line):
                 """List directory contents.
                 
                 Usage: %ls
@@ -415,7 +421,7 @@ def setup_ipython_magic():
                 return cwd
             
             @line_magic
-            def mkdir(self, line):
+            def nkdir(self, line):
                 """Create directory.
                 
                 Usage: %mkdir directory_name
@@ -426,6 +432,7 @@ def setup_ipython_magic():
                 
                 try:
                     os.makedirs(line.strip(), exist_ok=True)
+                    clipboard.copy(os.path.realpath(line))
                     print(f"Created directory: {line.strip()}")
                 except OSError as e:
                     print(f"Error: {e}")
