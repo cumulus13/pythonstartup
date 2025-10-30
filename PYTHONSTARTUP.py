@@ -4,16 +4,24 @@
 #license: MIT
 
 from __future__ import print_function
+import sys
+import os
+# print(f"CURRENT DIR: {os.getcwd()}")
+# print(f"SPLITTED DIR: {os.path.splitdrive(os.getcwd())}")
+os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\" if sys.platform == 'win32' else '')
+print(f"CURRENT DIR: {os.getcwd()}")
 import rlcompleter
 import readline
-import os
-import sys
 import inspect
 import signal
 import importlib
 from pathlib import Path
 from typing import Union, Optional, Any
-
+import clipboard
+from ctraceback import CTraceback
+from richcolorlog import setup_logging
+sys.excepthook = CTraceback()
+setup_logging(exceptions=['pika', 'urllib3', 'urllib2', 'urllib', 'asyncio'], show_locals=False)
 # Configure environment
 readline.parse_and_bind('tab:complete')
 os.environ.update({'PYTHONIOENCODING': 'UTF-8'})
@@ -24,6 +32,8 @@ if not sys.platform == 'win32':
 try:
     from rich.console import Console
     from rich.syntax import Syntax
+    from rich import traceback as rich_traceback
+    rich_traceback.install(show_locals=False, theme='fruity', width=os.get_terminal_size()[0])
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
