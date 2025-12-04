@@ -14,3 +14,8 @@ build/
 *.egg-info/
 traceback.log
 __pycache__/
+# PT backup directory
+.pt/
+
+# Added entries (1 items)
+*sublime*

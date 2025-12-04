@@ -8,7 +8,9 @@ import sys
 import os
 # print(f"CURRENT DIR: {os.getcwd()}")
 # print(f"SPLITTED DIR: {os.path.splitdrive(os.getcwd())}")
+# if os.path.abspath(os.getcwd().lower()) == r'c:\projects':
 os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\" if sys.platform == 'win32' else '')
+    # os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\")
 print(f"CURRENT DIR: {os.getcwd()}")
 import rlcompleter
 import readline
@@ -315,7 +317,7 @@ def setup_shell_functions():
             os.system('cls')
         else:
             os.system('clear')
-    
+
     def pwd():
         """Print working directory."""
         cwd = os.getcwd()
@@ -460,6 +462,10 @@ def setup_ipython_magic():
                 """Kill a process by PID with specified signal."""
                 return kill_process(int(line), sig)
 
+            @line_magic
+            def x(self, line):
+                exit()
+
         
         # Register the magic commands
         # ip.register_magic_function(CodeToolsMagics.read, 'line', 'read')
@@ -491,7 +497,6 @@ def detect_environment():
     except ImportError:
         print("Running in standard Python interpreter")
         return False
-
 
 # Initialize the environment
 def initialize():
@@ -527,7 +532,7 @@ def initialize():
     print(f"\nRich syntax highlighting: {'Available' if RICH_AVAILABLE else 'Not available'}")
     print(f"Code analysis: {'Available' if PYREAD_AVAILABLE else 'Not available'}")
     print(f"Terminal width: {get_terminal_width()}")
-
+    
 
 # Run initialization
 if __name__ == "__main__":
