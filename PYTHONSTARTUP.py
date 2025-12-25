@@ -6,11 +6,8 @@
 from __future__ import print_function
 import sys
 import os
-# print(f"CURRENT DIR: {os.getcwd()}")
-# print(f"SPLITTED DIR: {os.path.splitdrive(os.getcwd())}")
-# if os.path.abspath(os.getcwd().lower()) == r'c:\projects':
-os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\" if sys.platform == 'win32' else '')
-    # os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\")
+if os.path.abspath(os.getcwd()).lower() == r"c:\projects":
+    os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\" if sys.platform == 'win32' else '')
 print(f"CURRENT DIR: {os.getcwd()}")
 import rlcompleter
 import readline
@@ -20,15 +17,115 @@ import importlib
 from pathlib import Path
 from typing import Union, Optional, Any
 import clipboard
-from ctraceback import CTraceback
-from richcolorlog import setup_logging
-sys.excepthook = CTraceback()
-setup_logging(exceptions=['pika', 'urllib3', 'urllib2', 'urllib', 'asyncio'], show_locals=False)
+from warnings import warn
+
+exceptions=['pika', 'urllib3', 'urllib2', 'urllib', 'asyncio']
+tprint = None
+try:
+    from richcolorlog import setup_logging, print_exception as tprint  # type: ignore
+    # sys.excepthook = CTraceback()
+    setup_logging(__name__, exceptions = exceptions, show_locals=False)
+except:
+    """
+    Create a custom logging level:
+        EMERGENCY, ALERT, CRITICAL, ERROR,
+        WARNING, NOTICE, INFO, DEBUG,
+        SUCCESS, FATAL
+    With syslog format + additional SUCCESS and FATAL.
+    """
+
+    import logging
+
+    # ============================================================
+    # 1. LEVEL DEFINITION (Syslog + Extra)
+    # ============================================================
+
+    CUSTOM_LOG_LEVELS = {
+        # Syslog RFC5424 severity (0 = highest severity)
+        # We map to the top of the Python logging range (10–60)
+        "EMERGENCY": 60,   # System unusable
+        "ALERT":     55,   # Immediate action required
+        "CRITICAL":  logging.CRITICAL,  # 50
+        "ERROR":     logging.ERROR,     # 40
+        "WARNING":   logging.WARNING,   # 30
+        "NOTICE":    25,   # Normal but significant condition
+        "INFO":      logging.INFO,      # 20
+        "DEBUG":     logging.DEBUG,     # 10
+
+        # Custom level tambahan
+        "SUCCESS":   22,   # Operation successful
+        "FATAL":     65,   # Hard failure beyond CRITICAL
+    }
+
+    # ============================================================
+    # 2. LEVEL REGISTRATION TO LOGGING
+    # ============================================================
+
+    def register_custom_levels():
+        for level_name, level_value in CUSTOM_LOG_LEVELS.items():
+            # Register for Python logging
+            logging.addLevelName(level_value, level_name)
+
+            # Tambah method ke logging.Logger
+            def log_for(level):
+                def _log_method(self, message, *args, **kwargs):
+                    if self.isEnabledFor(level):
+                        self._log(level, message, args, **kwargs)
+                return _log_method
+
+            # buat method lowercase: logger.emergency(), logger.notice(), dll
+            setattr(logging.Logger, level_name.lower(), log_for(level_value))
+
+
+    register_custom_levels()
+
+    # ============================================================
+    # 3. FORMATTER DETAIL & PROFESSIONAL
+    # ============================================================
+
+    DEFAULT_FORMAT = (
+        "[%(asctime)s] "
+        "%(levelname)-10s "
+        "%(name)s: "
+        "%(message)s"
+    )
+
+    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
+    def get_default_handler():
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(DEFAULT_FORMAT, DATE_FORMAT)
+        handler.setFormatter(formatter)
+        return handler
+
+
+    # ============================================================
+    # 4. FUNCTION TO GET THE LOGGER THAT IS READY
+    # ============================================================
+
+    def get_logger(name="default", level=logging.DEBUG):
+        logger = logging.getLogger(name)
+        logger.setLevel(level)
+
+        if not logger.handlers:  # Hindari duplicate handler
+            logger.addHandler(get_default_handler())
+
+        return logger
+
+    logger = get_logger(__name__)
+    for exc in exceptions:
+        logging.getLogger(exc).setLevel(logging.CRITICAL)
+
+if not tprint:
+    import traceback
+    def tprint(*args, **kwargs):
+        traceback.print_exc(*args, **kwargs)
+
 # Configure environment
-readline.parse_and_bind('tab:complete')
+readline.parse_and_bind('tab:complete')  # type: ignore
 os.environ.update({'PYTHONIOENCODING': 'UTF-8'})
-if not sys.platform == 'win32':
-    os.environ.update({"XDG_SESSION_TYPE": "wayland"})
+if not sys.platform == 'win32': os.environ.update({"XDG_SESSION_TYPE": "wayland"})  # type: ignore
 
 # Check for optional dependencies
 try:
@@ -45,7 +142,6 @@ try:
     PYREAD_AVAILABLE = True
 except ImportError:
     PYREAD_AVAILABLE = False
-
 
 def setdebug(debug=None, host=None, traceback_debugger_server=None, reset=False):
     """Set debug environment variables."""
@@ -99,7 +195,6 @@ def expand(env=None):
         for key, value in os.environ.items():
             print(f"{key}={value}")
 
-
 def now():
     """Get current timestamp."""
     from datetime import datetime
@@ -124,7 +219,7 @@ def get_terminal_width():
     
     return width
 
-def get_source(source):
+def get_source(source, no_lines = False, copy_to_clipboard=False):
     """Display source code with syntax highlighting."""
     if sys.version_info.major == 3:
         if not RICH_AVAILABLE:
@@ -142,11 +237,14 @@ def get_source(source):
                 source_code, 
                 "python", 
                 theme='fruity', 
-                line_numbers=True, 
+                line_numbers=True if not no_lines else False, 
                 tab_size=2, 
                 code_width=get_terminal_width(), 
                 word_wrap=True
             )
+            if copy_to_clipboard:
+                clipboard.copy(source_code)
+                print("Source code copied to clipboard")
             console.print(syntax)
             print(f"WIDTH: {get_terminal_width()}")
             
@@ -163,8 +261,51 @@ def get_source(source):
             cmd = """python3 -c \"import {};import inspect;from rich.console import Console;from rich.syntax import Syntax;console = Console();console.print(Syntax(inspect.getsource({}), 'python', theme = 'fruity', line_numbers=True, tab_size=2, code_width={}))\"""".format(source.__name__, source.__name__, get_width())
             os.system(cmd)
 
+def get_class_name(item):
+    """
+    Return class name for all object types with proper error handling
+    """
+    try:
+        # Handle class
+        if hasattr(item, '__name__') and not hasattr(item, '__self__'):
+            # Check if it's a class or function
+            if hasattr(item, '__bases__'):
+                return item.__name__  # It's a class
+            elif hasattr(item, '__qualname__') and '.' in item.__qualname__:
+                # It's a method (bound or unbound)
+                return item.__qualname__.split('.')[-2]
+            else:
+                # It's a regular function
+                return 'function'
+        
+        # Handle instance method (bound method)
+        elif hasattr(item, '__self__'):
+            return item.__self__.__class__.__name__
+        
+        # Handle instance
+        elif hasattr(item, '__class__'):
+            return item.__class__.__name__
+        
+        else:
+            return str(type(item))
+            
+    except Exception as e:
+        # return f"Error: {type(e).__name__}"
+        return None
 
-def read_file(file_path: Union[str, Path]) -> Optional[str]:
+def get_full_method_name(method):
+    try:
+        # Get the qualname (ex: "Publisher.publish")
+        if hasattr(method, '__qualname__'):
+            # For methods from classes
+            return method.__qualname__
+        else:
+            # Fallback
+            return method.__name__
+    except:
+        return None
+
+def read_file(file_path: Union[str, Path], method_or_class: Optional[str] = None) -> Optional[str]:
     """Read and display a Python file with syntax highlighting."""
     path = Path(file_path)
     
@@ -190,14 +331,59 @@ def read_file(file_path: Union[str, Path]) -> Optional[str]:
         # Display structure analysis if pyread is available
         if PYREAD_AVAILABLE:
             try:
-                analyzer = CodeAnalyzer()
+                analyzer = CodeAnalyzer()  # type: ignore
+                print(f"Path: {path}")
                 analyzer.process_file(str(path))
-                analyzer.print_structure()
+                
+                method_name = None
+
+                if method_or_class:
+                    class_name = get_class_name(method_or_class)
+                    method_name = get_full_method_name(method_or_class)
+                    if method_name and method_name == class_name:
+                        method_name = None
+                    print(f"Class Name: {class_name}")
+                    print(f"Method Name: {method_name}") if method_name else None
+                    if method_name and '.' in method_name:  # type: ignore
+                        class_name, method_name = method_name.split('.', 1)  # type: ignore
+                    
+                    elements = analyzer.find_code_elements(method_name, class_name)
+                    
+                    if elements:
+                        analyzer.display_multiple_elements(elements, 'fruity')
+                    else:
+                        if class_name:
+                            console.print(f"[red]❌ Method '{method_name}' not found in class '{class_name}'[/]")
+                        else:
+                            console.print(f"[red]❌ Function/method '{method_name}' not found[/]")
+                #     get_source(method_or_class)
+
+                # class_name = get_class_name(method_or_class)
+                # print(f"Class Name: {class_name}")
+                
+                # method_name = get_full_method_name(method_or_class)
+                # if method_name and method_name == class_name:
+                #     method_name = None
+                # # else:
+                # print(f"Method Name [1]: {method_name}") if method_name else None
+                # if not method_name:
+                #     method_name = get_full_method_name(method_or_class)
+                # print(f"Method Name [2]: {method_name}") if method_name else None
+                # if method_name and '.' in method_name:
+                #     class_name, method_name = method_name.split('.', 1)
+                #     print(f"Method Name [3]: {method_name}") if method_name else None
+                
+                analyzer.print_structure(method_name, True)
+                if not method_name:
+                    get_source(method_or_class)
                 print()  # Add spacing
+                
             except Exception as e:
                 print(f"Warning: Could not analyze file structure: {e}")
+                tprint(e)
+            return 
         else:
-            warning
+            warn("Pyread library not available. Install with: pip install pyread")
         # Display source code with syntax highlighting
         console.print(f"[bold #00FF88]📄 Complete Source Code:[/] [bold #55FFFF]{path}[/]\n")
         syntax = Syntax(
@@ -220,8 +406,7 @@ def read_file(file_path: Union[str, Path]) -> Optional[str]:
         print(f"Error reading file '{path}': {e}")
         return None
 
-
-def read_module_or_file(path: str) -> Optional[str]:
+def read_module_or_file(path: Any) -> Optional[str]:
     """
     Read either a file path or import a module and display its source.
     
@@ -232,13 +417,24 @@ def read_module_or_file(path: str) -> Optional[str]:
         Content if successful, None otherwise
     """
     # First try as a file path
-    if os.path.isfile(path):
-        return read_file(path)
+    try:
+        if os.path.isfile(path):
+            return read_file(path)
+    except Exception:
+        pass
     
     # Try as a module name
     if path in sys.modules:
         get_source(sys.modules[path])
         return None
+
+    try:
+        file_path = inspect.getfile(path)
+        return read_file(file_path, path)
+    except TypeError:
+        pass
+    except Exception:
+        pass
     
     # Try importing as module
     if "." in path:
@@ -258,7 +454,6 @@ def read_module_or_file(path: str) -> Optional[str]:
     print(f"Error: Could not find file or module '{path}'")
     return None
 
-
 def kill(pid, sig=signal.SIGTERM):
     """Kill a process by PID with specified signal."""
     return kill_process(pid, sig)
@@ -268,16 +463,13 @@ def read(path: str) -> Optional[str]:
     """Read and display a file or module with syntax highlighting."""
     return read_module_or_file(path)
 
-
 def source(*args, **kwargs):
     """Alias for get_source()"""
     return get_source(*args, **kwargs)
 
-
 def src(*args, **kwargs):
     """Alias for get_source()"""
     return get_source(*args, **kwargs)
-
 
 # Setup shell functions for standard Python
 def setup_shell_functions():
@@ -330,7 +522,6 @@ def setup_shell_functions():
     # builtins.mkdir = mkdir
     builtins.cls = cls
     builtins.pwd = pwd
-
 
 # IPython Magic Commands Setup
 def setup_ipython_magic():
@@ -483,7 +674,6 @@ def setup_ipython_magic():
     except ImportError:
         return False
 
-
 def detect_environment():
     """Detect if running in IPython or standard Python."""
     try:
@@ -533,7 +723,6 @@ def initialize():
     print(f"Code analysis: {'Available' if PYREAD_AVAILABLE else 'Not available'}")
     print(f"Terminal width: {get_terminal_width()}")
     
-
 # Run initialization
 if __name__ == "__main__":
     initialize()
