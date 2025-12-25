@@ -66,7 +66,7 @@ except:
             # Register for Python logging
             logging.addLevelName(level_value, level_name)
 
-            # Tambah method ke logging.Logger
+            # Add method to logging.Logger
             def log_for(level):
                 def _log_method(self, message, *args, **kwargs):
                     if self.isEnabledFor(level):
@@ -108,7 +108,7 @@ except:
         logger = logging.getLogger(name)
         logger.setLevel(level)
 
-        if not logger.handlers:  # Hindari duplicate handler
+        if not logger.handlers: # Avoid adding multiple handlers
             logger.addHandler(get_default_handler())
 
         return logger
