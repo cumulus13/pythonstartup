@@ -6,6 +6,8 @@
 from __future__ import print_function
 import sys
 import os
+# print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
+# print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
 if os.path.abspath(os.getcwd()).lower() == r"c:\projects":
     os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\" if sys.platform == 'win32' else '')
 print(f"CURRENT DIR: {os.getcwd()}")
@@ -14,17 +16,25 @@ import readline
 import inspect
 import signal
 import importlib
-from pathlib import Path
+from pathlib3 import Path
 from typing import Union, Optional, Any
 import clipboard
 from warnings import warn
 
 exceptions=['pika', 'urllib3', 'urllib2', 'urllib', 'asyncio']
-tprint = None
+tprint = None  # type: ignore
+os.environ.update({'PYTHONIOENCODING': 'UTF-8'})
+os.environ.pop('LOGGING', None)
+os.environ.pop('NO_LOGGING', None)
+# print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
+# print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
 try:
     from richcolorlog import setup_logging, print_exception as tprint  # type: ignore
     # sys.excepthook = CTraceback()
     setup_logging(__name__, exceptions = exceptions, show_locals=False)
+    # print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
+    # print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
+
 except:
     """
     Create a custom logging level:
@@ -122,6 +132,9 @@ if not tprint:
     def tprint(*args, **kwargs):
         traceback.print_exc(*args, **kwargs)
 
+# print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
+# print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
+
 # Configure environment
 readline.parse_and_bind('tab:complete')  # type: ignore
 os.environ.update({'PYTHONIOENCODING': 'UTF-8'})
@@ -137,11 +150,17 @@ try:
 except ImportError:
     RICH_AVAILABLE = False
 
+# print(f"os.getenv('LOGGING')    [2]: {os.getenv('LOGGING')}")
+# print(f"os.getenv('NO_LOGGING') [2]: {os.getenv('NO_LOGGING')}")
+
 try:
     from pyread import CodeAnalyzer
     PYREAD_AVAILABLE = True
 except ImportError:
     PYREAD_AVAILABLE = False
+
+# print(f"os.getenv('LOGGING')    [3]: {os.getenv('LOGGING')}")
+# print(f"os.getenv('NO_LOGGING') [3]: {os.getenv('NO_LOGGING')}")
 
 def setdebug(debug=None, host=None, traceback_debugger_server=None, reset=False):
     """Set debug environment variables."""
@@ -170,6 +189,9 @@ def setdebug(debug=None, host=None, traceback_debugger_server=None, reset=False)
         os.environ['TRACEBACK_DEBUGGER_SERVER'] = str(traceback_debugger_server)
     
     print("Debug environment configured")
+
+# print(f"os.getenv('LOGGING')    [1]: {os.getenv('LOGGING')}")
+# print(f"os.getenv('NO_LOGGING') [1]: {os.getenv('NO_LOGGING')}")
 
 def set_debug(debug=None, host=None, traceback_debugger_server=None, reset=False):
     """Alias for setdebug()."""
