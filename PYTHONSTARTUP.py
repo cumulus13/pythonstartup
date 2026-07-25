@@ -3,161 +3,186 @@
 #email: cumulus13@gmail.com
 #license: MIT
 
-from __future__ import print_function
+# from __future__ import print_function
 import sys
 import os
-# print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
-# print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
 if os.path.abspath(os.getcwd()).lower() == r"c:\projects":
     os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\" if sys.platform == 'win32' else '')
 print(f"CURRENT DIR: {os.getcwd()}")
-import rlcompleter
+# import rlcompleter
 import readline
-import inspect
-import signal
-import importlib
-from pathlib3 import Path
+
 from typing import Union, Optional, Any
-import clipboard
-from warnings import warn
 
 exceptions=['pika', 'urllib3', 'urllib2', 'urllib', 'asyncio']
-tprint = None  # type: ignore
+tprint = None  # type: ignore  
 os.environ.update({'PYTHONIOENCODING': 'UTF-8'})
 os.environ.pop('LOGGING', None)
 os.environ.pop('NO_LOGGING', None)
-# print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
-# print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
-try:
-    from richcolorlog import setup_logging, print_exception as tprint  # type: ignore
-    # sys.excepthook = CTraceback()
-    setup_logging(__name__, exceptions = exceptions, show_locals=False)
-    # print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
-    # print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
 
-except:
-    """
-    Create a custom logging level:
-        EMERGENCY, ALERT, CRITICAL, ERROR,
-        WARNING, NOTICE, INFO, DEBUG,
-        SUCCESS, FATAL
-    With syslog format + additional SUCCESS and FATAL.
-    """
+def Logger():
 
-    import logging
+    if str(os.getenv("LOGGER_SETUP", "0")).lower() in ("1", 'yes", "ok", "on'):
+        return True
 
-    # ============================================================
-    # 1. LEVEL DEFINITION (Syslog + Extra)
-    # ============================================================
+    try:
+        from richcolorlog import setup_logging, print_exception as tprint  # type: ignore
+        # sys.excepthook = CTraceback()
+        logger = setup_logging(__name__, exceptions = exceptions, show_locals=False)
+        # print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
+        # print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
 
-    CUSTOM_LOG_LEVELS = {
-        # Syslog RFC5424 severity (0 = highest severity)
-        # We map to the top of the Python logging range (10–60)
-        "EMERGENCY": 60,   # System unusable
-        "ALERT":     55,   # Immediate action required
-        "CRITICAL":  logging.CRITICAL,  # 50
-        "ERROR":     logging.ERROR,     # 40
-        "WARNING":   logging.WARNING,   # 30
-        "NOTICE":    25,   # Normal but significant condition
-        "INFO":      logging.INFO,      # 20
-        "DEBUG":     logging.DEBUG,     # 10
+        os.environ.update({"LOGGER_SETUP": "1"})
+        os.environ.update({"LOGGER_TYPE": "rcl"})
+        return logger
 
-        # Custom level tambahan
-        "SUCCESS":   22,   # Operation successful
-        "FATAL":     65,   # Hard failure beyond CRITICAL
-    }
+    except:
+        """
+        Create a custom logging level:
+            EMERGENCY, ALERT, CRITICAL, ERROR,
+            WARNING, NOTICE, INFO, DEBUG,
+            SUCCESS, FATAL
+        With syslog format + additional SUCCESS and FATAL.
+        """
 
-    # ============================================================
-    # 2. LEVEL REGISTRATION TO LOGGING
-    # ============================================================
+        import logging
 
-    def register_custom_levels():
-        for level_name, level_value in CUSTOM_LOG_LEVELS.items():
-            # Register for Python logging
-            logging.addLevelName(level_value, level_name)
+        # ============================================================
+        # 1. LEVEL DEFINITION (Syslog + Extra)
+        # ============================================================
 
-            # Add method to logging.Logger
-            def log_for(level):
-                def _log_method(self, message, *args, **kwargs):
-                    if self.isEnabledFor(level):
-                        self._log(level, message, args, **kwargs)
-                return _log_method
+        CUSTOM_LOG_LEVELS = {
+            # Syslog RFC5424 severity (0 = highest severity)
+            # We map to the top of the Python logging range (10–60)
+            "EMERGENCY": 60,   # System unusable
+            "ALERT":     55,   # Immediate action required
+            "CRITICAL":  logging.CRITICAL,  # 50
+            "ERROR":     logging.ERROR,     # 40
+            "WARNING":   logging.WARNING,   # 30
+            "NOTICE":    25,   # Normal but significant condition
+            "INFO":      logging.INFO,      # 20
+            "DEBUG":     logging.DEBUG,     # 10
 
-            # buat method lowercase: logger.emergency(), logger.notice(), dll
-            setattr(logging.Logger, level_name.lower(), log_for(level_value))
+            # Custom level tambahan
+            "SUCCESS":   22,   # Operation successful
+            "FATAL":     65,   # Hard failure beyond CRITICAL
+        }
 
+        # ============================================================
+        # 2. LEVEL REGISTRATION TO LOGGING
+        # ============================================================
 
-    register_custom_levels()
+        def register_custom_levels():
+            for level_name, level_value in CUSTOM_LOG_LEVELS.items():
+                # Register for Python logging
+                logging.addLevelName(level_value, level_name)
 
-    # ============================================================
-    # 3. FORMATTER DETAIL & PROFESSIONAL
-    # ============================================================
+                # Add method to logging.Logger
+                def log_for(level):
+                    def _log_method(self, message, *args, **kwargs):
+                        if self.isEnabledFor(level):
+                            self._log(level, message, args, **kwargs)
+                    return _log_method
 
-    DEFAULT_FORMAT = (
-        "[%(asctime)s] "
-        "%(levelname)-10s "
-        "%(name)s: "
-        "%(message)s"
-    )
-
-    DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+                # create method lowercase: logger.emergency(), logger.notice(), dll
+                setattr(logging.Logger, level_name.lower(), log_for(level_value))
 
 
-    def get_default_handler():
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(DEFAULT_FORMAT, DATE_FORMAT)
-        handler.setFormatter(formatter)
-        return handler
+        register_custom_levels()
+
+        # ============================================================
+        # 3. FORMATTER DETAIL & PROFESSIONAL
+        # ============================================================
+
+        DEFAULT_FORMAT = (
+            "[%(asctime)s] "
+            "%(levelname)-10s "
+            "%(name)s: "
+            "%(message)s"
+        )
+
+        DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
-    # ============================================================
-    # 4. FUNCTION TO GET THE LOGGER THAT IS READY
-    # ============================================================
+        def get_default_handler():
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(DEFAULT_FORMAT, DATE_FORMAT)
+            handler.setFormatter(formatter)
+            return handler
 
-    def get_logger(name="default", level=logging.DEBUG):
-        logger = logging.getLogger(name)
-        logger.setLevel(level)
 
-        if not logger.handlers: # Avoid adding multiple handlers
-            logger.addHandler(get_default_handler())
+        # ============================================================
+        # 4. FUNCTION TO GET THE LOGGER THAT IS READY
+        # ============================================================
+
+        def get_logger(name="default", level=logging.DEBUG):
+            logger = logging.getLogger(name)
+            logger.setLevel(level)
+
+            if not logger.handlers: # Avoid adding multiple handlers
+                logger.addHandler(get_default_handler())
+
+            return logger
+
+        logger = get_logger(__name__)
+        for exc in exceptions:
+            logging.getLogger(exc).setLevel(logging.CRITICAL)
+
+        os.environ.update({"LOGGER_SETUP": "1"})
+        os.environ.update({"LOGGER_TYPE": "logging"})
 
         return logger
 
-    logger = get_logger(__name__)
-    for exc in exceptions:
-        logging.getLogger(exc).setLevel(logging.CRITICAL)
-
-if not tprint:
+if tprint is None:
     import traceback
     def tprint(*args, **kwargs):
         traceback.print_exc(*args, **kwargs)
 
-# print(f"os.getenv('LOGGING'): {os.getenv('LOGGING')}")
-# print(f"os.getenv('NO_LOGGING'): {os.getenv('NO_LOGGING')}")
-
 # Configure environment
 readline.parse_and_bind('tab:complete')  # type: ignore
 os.environ.update({'PYTHONIOENCODING': 'UTF-8'})
-if not sys.platform == 'win32': os.environ.update({"XDG_SESSION_TYPE": "wayland"})  # type: ignore
+if not sys.platform == 'win32': os.environ.update({"XDG_SESSION_TYPE": "wayland"})  
 
-# Check for optional dependencies
-try:
-    from rich.console import Console
-    from rich.syntax import Syntax
-    from rich import traceback as rich_traceback
-    rich_traceback.install(show_locals=False, theme='fruity', width=os.get_terminal_size()[0])
-    RICH_AVAILABLE = True
-except ImportError:
-    RICH_AVAILABLE = False
+def rich_setup():
+    # Check for optional dependencies
+
+    if str(os.getenv("RICH_AVAILABLE", False)).lower() in ("0", 'true', 'ok', 'yes', 'on'):
+        return True
+
+    try:
+        from rich.console import Console
+        from rich.syntax import Syntax
+        from rich import traceback as rich_traceback
+        rich_traceback.install(show_locals=False, theme='fruity', width=os.get_terminal_size()[0])
+        os.environ.update({"RICH_AVAILABLE": "1"})
+        return True
+    except:
+        pass
+
+    return False
+
+def rich_available():
+    return str(os.getenv('RICH_AVAILABLE', False)).lower() in ("1", 'true', '0', 'yes', 'ok')
 
 # print(f"os.getenv('LOGGING')    [2]: {os.getenv('LOGGING')}")
 # print(f"os.getenv('NO_LOGGING') [2]: {os.getenv('NO_LOGGING')}")
 
-try:
-    from pyread import CodeAnalyzer
-    PYREAD_AVAILABLE = True
-except ImportError:
-    PYREAD_AVAILABLE = False
+
+def pyread_setup():
+    if str(os.getenv("PYREAD_AVAILABLE", False)).lower() in ("0", 'true', 'ok', 'yes', 'on'):
+        return True
+
+    try:
+        from pyread import CodeAnalyzer  # type: ignore
+        os.environ.update({"PYREAD_AVAILABLE": "1"})
+        return True
+    except ImportError:
+        pass
+
+    return False
+
+def pyread_available():
+    return str(os.getenv('PYREAD_AVAILABLE', False)).lower() in ("1", 'true', '0', 'yes', 'ok')
 
 # print(f"os.getenv('LOGGING')    [3]: {os.getenv('LOGGING')}")
 # print(f"os.getenv('NO_LOGGING') [3]: {os.getenv('NO_LOGGING')}")
@@ -197,8 +222,13 @@ def set_debug(debug=None, host=None, traceback_debugger_server=None, reset=False
     """Alias for setdebug()."""
     setdebug(debug, host, traceback_debugger_server, reset)
 
-def kill_process(pid, sig=signal.SIGTERM):
+def kill_process(pid, sig=None):
     """Kill a process by PID."""
+    
+    import signal
+
+    sig = sig or signal.SIGTERM
+
     try:
         os.kill(pid, sig)
         print(f"Process {pid} terminated with signal {sig}")
@@ -241,10 +271,12 @@ def get_terminal_width():
     
     return width
 
-def get_source(source, no_lines = False, copy_to_clipboard=False):
+def get_source(source, real_linenumbers=False, copy_to_clipboard=False, no_lines=False):
     """Display source code with syntax highlighting."""
+    import inspect
+    rich_setup()
     if sys.version_info.major == 3:
-        if not RICH_AVAILABLE:
+        if not rich_available():
             print("Rich library not available. Install with: pip install rich")
             try:
                 print(inspect.getsource(source))
@@ -253,23 +285,57 @@ def get_source(source, no_lines = False, copy_to_clipboard=False):
             return
         
         try:
-            source_code = inspect.getsource(source)
-            console = Console()
-            syntax = Syntax(
-                source_code, 
-                "python", 
-                theme='fruity', 
-                line_numbers=True if not no_lines else False, 
-                tab_size=2, 
-                code_width=get_terminal_width(), 
+            # ⭐ FIX: use real line numbers
+            # real line numbers support (works on old rich)
+            if real_linenumbers:
+                lines, start_line = inspect.getsourcelines(source)
+            else:
+                lines = inspect.getsource(source).splitlines(True)
+                start_line = 1
+
+            # build numbered code manually
+            if not no_lines:
+                width = len(str(start_line + len(lines) - 1))
+                numbered = []
+
+                for i, line in enumerate(lines, start=start_line):
+                    numbered.append(f"{str(i).rjust(width)} │ {line}")
+
+                source_code = "".join(numbered)
+            else:
+                source_code = "".join(lines)
+
+            # get full path
+            try:
+                file_path = inspect.getsourcefile(source) or inspect.getfile(source)
+            except Exception:
+                file_path = "Unknown"
+
+            console = Console()  # type: ignore
+
+            console.print(
+                f"[#000000 on #FFFF00]FILE:[/] "
+                f"[#FFFFFF on #0000FF]{file_path}:{start_line}[/]"
+            )
+
+            syntax = Syntax(  # type: ignore
+                source_code,
+                "python",
+                theme='fruity',
+                line_numbers=False,   # IMPORTANT
+                tab_size=2,
+                code_width=get_terminal_width(),
                 word_wrap=True
             )
+
             if copy_to_clipboard:
+                import clipboard
                 clipboard.copy(source_code)
                 print("Source code copied to clipboard")
+
             console.print(syntax)
             print(f"WIDTH: {get_terminal_width()}")
-            
+
         except OSError as e:
             print(f"Error: Could not retrieve source code. {e}")
         except Exception as e:
@@ -277,10 +343,10 @@ def get_source(source, no_lines = False, copy_to_clipboard=False):
 
     else:
         try:
-            cmd = """python3 -c \"import {};import inspect;from rich.console import Console;from rich.syntax import Syntax;console = Console();console.print(Syntax(inspect.getsource({}), 'python', theme = 'fruity', line_numbers=True, tab_size=2, code_width={}))\"""".format(source.__module__, source.__module__, get_width())
+            cmd = """python3 -c \"import {};import inspect;from rich.console import Console;from rich.syntax import Syntax;console = Console();console.print(Syntax(inspect.getsource({}), 'python', theme = 'fruity', line_numbers=True, tab_size=2, code_width={}))\"""".format(source.__module__, source.__module__, get_terminal_width())
             os.system(cmd)
         except:
-            cmd = """python3 -c \"import {};import inspect;from rich.console import Console;from rich.syntax import Syntax;console = Console();console.print(Syntax(inspect.getsource({}), 'python', theme = 'fruity', line_numbers=True, tab_size=2, code_width={}))\"""".format(source.__name__, source.__name__, get_width())
+            cmd = """python3 -c \"import {};import inspect;from rich.console import Console;from rich.syntax import Syntax;console = Console();console.print(Syntax(inspect.getsource({}), 'python', theme = 'fruity', line_numbers=True, tab_size=2, code_width={}))\"""".format(source.__name__, source.__name__, get_terminal_width())
             os.system(cmd)
 
 def get_class_name(item):
@@ -327,8 +393,17 @@ def get_full_method_name(method):
     except:
         return None
 
-def read_file(file_path: Union[str, Path], method_or_class: Optional[str] = None) -> Optional[str]:
+def read_file(file_path: Any, method_or_class: Optional[str] = None) -> Optional[str]:
     """Read and display a Python file with syntax highlighting."""
+
+    rich_setup()
+    pyread_setup()
+
+    try:
+        from pathlib3 import Path
+    except:
+        from pathlib import Path
+
     path = Path(file_path)
     
     if not path.exists():
@@ -343,15 +418,15 @@ def read_file(file_path: Union[str, Path], method_or_class: Optional[str] = None
         with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        if not RICH_AVAILABLE:
+        if not rich_available():
             print("Rich library not available. Displaying plain text:")
             print(content)
             return content
         
-        console = Console()
+        console = Console()  # type: ignore
         
         # Display structure analysis if pyread is available
-        if PYREAD_AVAILABLE:
+        if pyread_available():
             try:
                 analyzer = CodeAnalyzer()  # type: ignore
                 print(f"Path: {path}")
@@ -402,13 +477,14 @@ def read_file(file_path: Union[str, Path], method_or_class: Optional[str] = None
                 
             except Exception as e:
                 print(f"Warning: Could not analyze file structure: {e}")
-                tprint(e)
+                tprint(e, show_emoji=True)  # type: ignore
             return 
         else:
+            from warnings import warn
             warn("Pyread library not available. Install with: pip install pyread")
         # Display source code with syntax highlighting
         console.print(f"[bold #00FF88]📄 Complete Source Code:[/] [bold #55FFFF]{path}[/]\n")
-        syntax = Syntax(
+        syntax = Syntax(  # type: ignore
             content, 
             "python", 
             theme='fruity', 
@@ -438,6 +514,9 @@ def read_module_or_file(path: Any) -> Optional[str]:
     Returns:
         Content if successful, None otherwise
     """
+    
+    import inspect
+    
     # First try as a file path
     try:
         if os.path.isfile(path):
@@ -461,6 +540,7 @@ def read_module_or_file(path: Any) -> Optional[str]:
     # Try importing as module
     if "." in path:
         try:
+            import importlib
             module = importlib.import_module(path)
             get_source(module)
             return None
@@ -469,16 +549,22 @@ def read_module_or_file(path: Any) -> Optional[str]:
             return None
     
     # Try as local Python file
+    try:
+        from pathlib3 import Path
+    except:
+        from pathlib import Path
+
     local_file = Path(f"{path}.py")
     if local_file.exists():
-        return read_file(local_file)
+        return read_file(local_file)  
     
     print(f"Error: Could not find file or module '{path}'")
     return None
 
-def kill(pid, sig=signal.SIGTERM):
+def kill(pid, sig=None):
     """Kill a process by PID with specified signal."""
-    return kill_process(pid, sig)
+    import signal
+    return kill_process(pid, sig or signal.SIGTERM)
 
 # Regular function versions
 def read(path: str) -> Optional[str]:
@@ -528,7 +614,7 @@ def setup_shell_functions():
     def cls():
         """Clear screen."""
         if sys.platform == 'win32':
-            os.system('cls')
+            os.system('cls')  # type: ignore
         else:
             os.system('clear')
 
@@ -540,10 +626,10 @@ def setup_shell_functions():
     
     # Add functions to builtins so they're available globally
     # builtins.ls = ls
-    builtins.cd = cd
+    builtins.cd = cd  # type: ignore
     # builtins.mkdir = mkdir
-    builtins.cls = cls
-    builtins.pwd = pwd
+    builtins.cls = cls  # type: ignore
+    builtins.pwd = pwd  # type: ignore
 
 # IPython Magic Commands Setup
 def setup_ipython_magic():
@@ -657,7 +743,8 @@ def setup_ipython_magic():
                 
                 try:
                     os.makedirs(line.strip(), exist_ok=True)
-                    clipboard.copy(os.path.realpath(line))
+                    # import clipboard
+                    # clipboard.copy(os.path.realpath(line))
                     print(f"Created directory: {line.strip()}")
                 except OSError as e:
                     print(f"Error: {e}")
@@ -666,14 +753,15 @@ def setup_ipython_magic():
             def cls(self, line):
                 """Clear screen."""
                 if sys.platform == 'win32':
-                    os.system('cls')
+                    os.system('cls')  # type: ignore
                 else:
                     os.system('clear')
 
             @line_magic
-            def kill(self, line, sig=signal.SIGTERM):
+            def kill(self, line, sig=None):
                 """Kill a process by PID with specified signal."""
-                return kill_process(int(line), sig)
+                import signal
+                return kill_process(int(line), sig or signal.SIGTERM)
 
             @line_magic
             def x(self, line):
@@ -716,6 +804,9 @@ def initialize():
     print("Python Environment Tool Initialized")
     print("=" * 50)
     
+    # rich_setup()
+    # pyread_setup()
+
     # Detect environment
     is_ipython = detect_environment()
     
@@ -741,13 +832,13 @@ def initialize():
         setup_shell_functions()
         print("✅ Shell functions available globally")
     
-    print(f"\nRich syntax highlighting: {'Available' if RICH_AVAILABLE else 'Not available'}")
-    print(f"Code analysis: {'Available' if PYREAD_AVAILABLE else 'Not available'}")
+    # print(f"\nRich syntax highlighting: {'Available' if rich_available() else 'Not available'}")
+    # print(f"Code analysis: {'Available' if pyread_available() else 'Not available'}")
     print(f"Terminal width: {get_terminal_width()}")
     
 # Run initialization
-if __name__ == "__main__":
-    initialize()
-else:
+# if __name__ == "__main__":
+#     initialize()
+# else:
     # Auto-initialize when imported
-    initialize()
+initialize()
