@@ -4,15 +4,27 @@
 #license: MIT
 
 # from __future__ import print_function
+import importlib
+
+# try:
+#     from IPython import get_ipython
+#     ipython = get_ipython()
+#     if ipython is not None:
+#         ipython.run_line_magic('load_ext', 'autoreload')
+#         ipython.run_line_magic('autoreload', '2')
+# except ImportError:
+#     pass
+    
 import sys
 import os
 if os.path.abspath(os.getcwd()).lower() == r"c:\projects":
     os.chdir(f"{os.path.splitdrive(os.getcwd())[0]}" + "\\" if sys.platform == 'win32' else '')
+# os.system("cls") if sys.platform == 'win32' else os.system('clear')  
 print(f"CURRENT DIR: {os.getcwd()}")
 # import rlcompleter
 import readline
 
-from typing import Union, Optional, Any
+from typing import Optional, Any
 
 exceptions=['pika', 'urllib3', 'urllib2', 'urllib', 'asyncio']
 tprint = None  # type: ignore  
@@ -311,9 +323,14 @@ def get_source(source, real_linenumbers=False, copy_to_clipboard=False, no_lines
             except Exception:
                 file_path = "Unknown"
 
-            console = Console()  # type: ignore
+            try:
+                from rich import print as _print
+                from rich.syntax import Syntax
+            except:
+                from make_colors import Console, syntax, print as _print  # type: ignore
 
-            console.print(
+            
+            _print(
                 f"[#000000 on #FFFF00]FILE:[/] "
                 f"[#FFFFFF on #0000FF]{file_path}:{start_line}[/]"
             )
@@ -333,7 +350,7 @@ def get_source(source, real_linenumbers=False, copy_to_clipboard=False, no_lines
                 clipboard.copy(source_code)
                 print("Source code copied to clipboard")
 
-            console.print(syntax)
+            _print(syntax)
             print(f"WIDTH: {get_terminal_width()}")
 
         except OSError as e:
